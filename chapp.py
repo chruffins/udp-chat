@@ -1,6 +1,8 @@
 from tkinter import *
 from tkinter.scrolledtext import ScrolledText
 import socket
+#import _thread as thread
+import threading
 
 fonty = ("Courier",11)
 UDP_PORT = 25565
@@ -11,22 +13,30 @@ class ChatApp(Tk):
         self.geometry("600x400")
 
         self.__create_widgets()
-
+        
+        self.IP = ""
         self.sock = None
 
     def __create_socket(self):
         if not self.sock:
             try:
                 self.sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-                self.sock.bind(("",UDP_PORT))
+                self.sock.bind(("localhost",UDP_PORT))
+                self.__create_listener()
                 self.message("Connected to chat!")
             except Exception:
                 self.message("Binding to port failed!")
 
-    def message(self,text):
-        self.chatBox.config(state=NORMAL)
-        self.chatBox.insert(INSERT,text + "\n")
-        self.chatBox.config(state=DISABLED)
+    def __create_listener(self):
+        def receiveData():
+            while True:
+                data, addr = self.sock.recvfrom(1024)
+                self.message(str(data,'utf-8'))
+        
+        t = threading.Thread(target=receiveData)
+        t.setDaemon(True)
+        t.start()
+            
     
     def __create_widgets(self):
         
@@ -57,16 +67,35 @@ class ChatApp(Tk):
         self.connectBtn.place(width=80,height=25,x=520,y=375)
         
     def enter(self, event):
-        message = self.entry_text.get()
-        if message.strip() != "":
-            text = self.username.get() + ": " + self.entry_text.get() + "\n"
+        message = self.entry_text.get().strip()
+        if message != "":
+            if not self.sock:
+                self.message("Error: You aren't connected!")
+                return
             
-            self.chatBox.config(state=NORMAL)
-            self.chatBox.insert(INSERT,text)
-            self.chatBox.config(state=DISABLED)
+            text = self.username.get() + ": " + self.entry_text.get()
+
+            self.message(text)
+            
+            self.IP = self.ipAddress.get()
+            try:
+                print(bytes(text,'utf-8'))
+                self.sock.sendto(bytes(text,'utf-8'),(self.IP,UDP_PORT))
+            except:
+                if self.IP == "":
+                    self.message("You need to enter an IP address to send to...")
+                else:
+                    self.message("Error: message failed to send!")
 
             print(text)
             self.entryBox.delete(0,len(self.entryBox.get()))
+            
+    def message(self,text):
+        self.chatBox.config(state=NORMAL)
+        self.chatBox.insert(INSERT,text + "\n")
+        self.chatBox.config(state=DISABLED)
+
+    
             
 app = ChatApp()
 #app.mainloop()
