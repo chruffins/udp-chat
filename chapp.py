@@ -11,31 +11,66 @@ class ChatApp(Tk):
     def __init__(self, master=None):
         Tk.__init__(self, master)
         self.geometry("600x400")
+        self.title("Chat App")
 
         self.__create_widgets()
-        
+
         self.IP = ""
         self.sock = None
-
-    def __create_socket(self):
-        if not self.sock:
+        self.bound = False
+        
+        self.__create_socket()
+        self.__create_listener()
+        
+    def receiveData(self):
+        while self.bound:
             try:
-                self.sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-                self.sock.bind(("localhost",UDP_PORT))
-                self.__create_listener()
-                self.message("Connected to chat!")
-            except Exception:
-                self.message("Binding to port failed!")
-
-    def __create_listener(self):
-        def receiveData():
-            while True:
                 data, addr = self.sock.recvfrom(1024)
                 self.message(str(data,'utf-8'))
-        
-        t = threading.Thread(target=receiveData)
-        t.setDaemon(True)
-        t.start()
+            except Exception:
+                pass
+
+    def __create_socket(self):
+        def v4or6():
+            ip = self.ipAddress.get()
+            return 6 and len(ip) > 15 or 4
+                
+        if self.sock == None:
+            try:
+                self.sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+                self.sock.bind(("",UDP_PORT))
+                self.bound = True
+                self.message("Bound to port!")
+            except Exception:
+                self.message("Binding to port failed!")
+        else:
+            try:
+                #self.thread.stop()
+                self.sock.close()
+                if v4or6() == 4:
+                    self.sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+                    self.sock.bind(("",UDP_PORT))
+                    self.bound = True
+                    self.message("Bound to port!")
+                else:
+                    self.sock = socket.socket(socket.AF_INET6,socket.SOCK_DGRAM)
+                    self.sock.bind(("",UDP_PORT))
+                    self.bound = True
+                    self.message("Bound to port!")
+                self.__create_listener()
+            except Exception:
+                self.message("Binding to port failed!")
+                
+
+    def __create_listener(self):
+        try:
+            if self.bound:
+                self.thread = threading.Thread(target=self.receiveData)
+                self.thread.setDaemon(True)
+                self.thread.start()
+                self.message("Connected to chat!")
+        except:
+            self.message("Failed to create chat listener!")
             
     
     def __create_widgets(self):
@@ -79,7 +114,7 @@ class ChatApp(Tk):
             
             self.IP = self.ipAddress.get()
             try:
-                print(bytes(text,'utf-8'))
+                #print(bytes(text,'utf-8'))
                 self.sock.sendto(bytes(text,'utf-8'),(self.IP,UDP_PORT))
             except:
                 if self.IP == "":
@@ -98,5 +133,5 @@ class ChatApp(Tk):
     
             
 app = ChatApp()
-#app.mainloop()
+app.mainloop()
 #root.mainloop()
