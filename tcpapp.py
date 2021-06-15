@@ -16,60 +16,31 @@ class ChatApp(Tk):
         self.__create_widgets()
 
         self.IP = ""
-        self.listener = None
         self.sender = None
         self.bound = False
         
     def receiveData(self):
-        self.conn, addr = self.listener.accept()
-        self.message("Connected to {0}!".format(addr))
-        while self.bound:
+        while True:
             try:
-                data = self.conn.recv(1024)
+                data = self.sender.recv(1024)
+                if not data: break
                 self.message(str(data,'utf-8'))
             except Exception:
                 pass
 
     def __create_socket(self):
-        def v4or6():
-            ip = self.ipAddress.get()
-            return 6 and len(ip) > 15 or 4
-                
-        if self.listener != None:
-            self.listener.close()
-            self.sender.close()
-        try:
-            if v4or6() == 4:
-                self.listener = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-                self.sender = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-            else:
-                self.listener = socket.socket(socket.AF_INET6,socket.SOCK_STREAM)
-                self.sender = socket.socket(socket.AF_INET6,socket.SOCK_STREAM)
 
-            self.bound = True
-            self.__create_listener()
+        if self.sender:
+            self.sender.close()
+            
+        try:
+            self.sender = socket.create_connection((self.ipAddress.get(),TCP_PORT))
             self.message("Connecting to {0}...".format(self.ipAddress.get()))
-            self.sender.connect((self.ipAddress.get(), TCP_PORT))
-            
-            
+
+            threading.Thread(target=self.receiveData).start()            
         except Exception as e:
             self.message("Connection failed! " + repr(e))
-                
-
-    def __create_listener(self):
-        try:
-            self.listener.bind(("",TCP_PORT))
-            self.listener.listen()
-            self.bound = True
-            if self.bound:
-                self.thread = threading.Thread(target=self.receiveData)
-                self.thread.setDaemon(True)
-                self.thread.start()
-                #self.message("Connected to chat!")
-        except:
-            self.message("Failed to create chat listener!")
-            
-    
+                    
     def __create_widgets(self):
         
         self.chatBox = ScrolledText(self,
@@ -107,7 +78,7 @@ class ChatApp(Tk):
             
             text = self.username.get() + ": " + self.entry_text.get()
 
-            self.message(text)
+            #self.message(text)
             
             try:
                 #print(bytes(text,'utf-8'))
@@ -122,8 +93,6 @@ class ChatApp(Tk):
         self.chatBox.config(state=NORMAL)
         self.chatBox.insert(INSERT,text + "\n")
         self.chatBox.config(state=DISABLED)
-
-    
             
 app = ChatApp()
 app.mainloop()
