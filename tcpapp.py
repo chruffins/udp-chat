@@ -93,7 +93,8 @@ class ChatApp(Tk):
         self.chatBox.config(state=NORMAL)
         self.chatBox.insert(INSERT,text + "\n")
         self.chatBox.config(state=DISABLED)
-            
+
+print("Lol. Lmfao")            
 app = ChatApp()
 app.mainloop()
 #root.mainloop()
